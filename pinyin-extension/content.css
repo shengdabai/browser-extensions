@@ -1,0 +1,95 @@
+/* 中文学习助手 - 拼音和翻译标注样式 */
+
+/* 拼音标注样式（兼容旧版本） */
+.pinyin-annotation {
+  color: #666 !important;
+  font-size: 0.9em !important;
+  font-style: italic !important;
+  margin-left: 2px !important;
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+/* 新的标注样式（拼音 + 翻译） */
+.chinese-learning-annotation {
+  color: #666 !important;
+  font-size: 0.85em !important;
+  font-style: italic !important;
+  margin-left: 4px !important;
+  user-select: none !important;
+  pointer-events: none !important;
+  white-space: nowrap !important;
+  display: inline-block !important;
+}
+
+/* 拼音部分样式 */
+.chinese-learning-annotation {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+/* 确保标注在PDF注释中也能正常显示 */
+.annotationLayer .chinese-learning-annotation,
+.textLayer .chinese-learning-annotation,
+.annotationLayer .pinyin-annotation,
+.textLayer .pinyin-annotation {
+  color: #666 !important;
+  font-size: 0.85em !important;
+  font-style: italic !important;
+  vertical-align: baseline !important;
+  display: inline !important;
+}
+
+/* 在输入框中的标注样式优化 */
+input[data-pinyin-processed="true"]::after,
+textarea[data-pinyin-processed="true"]::after {
+  content: '';
+}
+
+/* 可编辑元素中的标注样式 */
+[contenteditable="true"] .chinese-learning-annotation,
+[contenteditable=""] .chinese-learning-annotation {
+  opacity: 0.8 !important;
+  transition: opacity 0.2s ease !important;
+}
+
+[contenteditable="true"]:hover .chinese-learning-annotation,
+[contenteditable=""]:hover .chinese-learning-annotation {
+  opacity: 1 !important;
+}
+
+/* 响应式设计 - 小屏幕优化 */
+@media (max-width: 768px) {
+
+  .chinese-learning-annotation,
+  .pinyin-annotation {
+    font-size: 0.75em !important;
+    margin-left: 2px !important;
+  }
+}
+
+/* 打印时隐藏标注 */
+@media print {
+
+  .chinese-learning-annotation,
+  .pinyin-annotation {
+    display: none !important;
+  }
+}
+/* Updated styles for learning supplement */
+.learning-supplement {
+  display: inline-block;
+  white-space: nowrap;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  vertical-align: baseline;
+  pointer-events: none; /* Let clicks pass through */
+  user-select: text; /* Allow selection? JS says no, but maybe user wants to copy? */
+}
+
+/* Allow selection of the supplement if the user really wants to copy it */
+.learning-supplement {
+  user-select: text !important;
+}
+
+.learning-supplement span {
+  display: inline;
+}

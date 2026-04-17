@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NotebookLM 章节拆分工具</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>📚 章节拆分工具</h1>
+    <p class="subtitle">将书籍按章节拆分为独立文档</p>
+    
+    <div class="upload-section">
+      <input type="file" id="fileInput" accept=".pdf,.epub,.mobi,.azw3" style="display: none;">
+      <button id="selectFileBtn" class="btn btn-primary">选择书籍文件</button>
+      <div id="fileInfo" class="file-info"></div>
+    </div>
+
+    <div class="options-section">
+      <label>
+        <input type="checkbox" id="autoDetectChapters" checked>
+        自动检测章节
+      </label>
+      <label>
+        <input type="checkbox" id="includeChapterNumbers" checked>
+        包含章节编号
+      </label>
+    </div>
+
+    <div class="chapter-preview" id="chapterPreview" style="display: none;">
+      <h3>检测到的章节：</h3>
+      <div id="chapterList" class="chapter-list"></div>
+    </div>
+
+    <div class="action-section">
+      <button id="splitBtn" class="btn btn-success" disabled>开始拆分</button>
+      <button id="downloadAllBtn" class="btn btn-secondary" disabled>下载所有章节</button>
+    </div>
+
+    <div id="progress" class="progress" style="display: none;">
+      <div class="progress-bar"></div>
+      <div class="progress-text"></div>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script src="fileParser.js"></script>
+  <script src="chapterSplitter.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
+

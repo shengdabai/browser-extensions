@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>书籍章节拆分工具</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>📚 书籍章节拆分工具</h1>
+    <p class="description">将书籍文件按章节拆分为独立文档</p>
+    
+    <div class="upload-section">
+      <input type="file" id="fileInput" accept=".pdf,.epub,.mobi" style="display: none;">
+      <button id="selectFileBtn" class="btn btn-primary">选择书籍文件</button>
+      <div id="fileInfo" class="file-info"></div>
+    </div>
+
+    <div class="options-section" id="optionsSection" style="display: none;">
+      <h3>拆分选项</h3>
+      
+      <div class="option-group">
+        <label>
+          <input type="checkbox" id="autoDetectChapters" checked>
+          自动检测章节
+        </label>
+      </div>
+
+      <div class="option-group">
+        <label>章节识别模式：</label>
+        <select id="chapterPattern">
+          <option value="auto">自动检测</option>
+          <option value="numbered">数字编号（第X章、Chapter X）</option>
+          <option value="chinese">中文标题（第一章、第二章）</option>
+          <option value="roman">罗马数字（I、II、III）</option>
+          <option value="custom">自定义正则</option>
+        </select>
+      </div>
+
+      <div class="option-group" id="customPatternGroup" style="display: none;">
+        <label>自定义正则表达式：</label>
+        <input type="text" id="customPattern" placeholder="例如：^第[一二三四五六七八九十]+章">
+        <small>用于匹配章节标题的正则表达式</small>
+      </div>
+
+      <div class="option-group">
+        <label>输出格式：</label>
+        <select id="outputFormat">
+          <option value="txt">纯文本 (.txt)</option>
+          <option value="md">Markdown (.md)</option>
+          <option value="html">HTML (.html)</option>
+        </select>
+      </div>
+
+      <button id="splitBtn" class="btn btn-success">开始拆分</button>
+    </div>
+
+    <div id="progressSection" style="display: none;">
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+      <p id="progressText">处理中...</p>
+    </div>
+
+    <div id="resultSection" class="result-section" style="display: none;">
+      <h3>拆分完成！</h3>
+      <p id="resultText"></p>
+      <button id="downloadAllBtn" class="btn btn-primary">下载所有章节</button>
+    </div>
+  </div>
+
+  <script src="fileProcessor.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
+

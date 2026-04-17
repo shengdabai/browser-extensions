@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>生成图标</title>
+</head>
+<body>
+  <h1>图标生成器</h1>
+  <p>点击下面的按钮生成图标文件（需要先下载）</p>
+  
+  <canvas id="canvas16" width="16" height="16" style="border: 1px solid #ccc; margin: 10px;"></canvas>
+  <button onclick="downloadIcon(16)">下载 16x16 图标</button><br>
+  
+  <canvas id="canvas48" width="48" height="48" style="border: 1px solid #ccc; margin: 10px;"></canvas>
+  <button onclick="downloadIcon(48)">下载 48x48 图标</button><br>
+  
+  <canvas id="canvas128" width="128" height="128" style="border: 1px solid #ccc; margin: 10px;"></canvas>
+  <button onclick="downloadIcon(128)">下载 128x128 图标</button>
+
+  <script>
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      
+      // 背景
+      ctx.fillStyle = '#4285f4';
+      ctx.fillRect(0, 0, size, size);
+      
+      // 绘制书籍图标（简化版）
+      const padding = size * 0.15;
+      const bookWidth = size - padding * 2;
+      const bookHeight = size - padding * 2;
+      
+      // 书籍封面
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(padding, padding, bookWidth, bookHeight);
+      
+      // 书籍线条
+      ctx.strokeStyle = '#333333';
+      ctx.lineWidth = Math.max(1, size / 32);
+      ctx.strokeRect(padding, padding, bookWidth, bookHeight);
+      
+      // 书籍中间线
+      ctx.beginPath();
+      ctx.moveTo(size / 2, padding);
+      ctx.lineTo(size / 2, size - padding);
+      ctx.stroke();
+      
+      // 添加文字 "章"
+      if (size >= 48) {
+        ctx.fillStyle = '#4285f4';
+        ctx.font = `bold ${size * 0.3}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('章', size / 2, size / 2);
+      }
+    }
+    
+    function downloadIcon(size) {
+      const canvas = document.getElementById(`canvas${size}`);
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `icon${size}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+    
+    // 初始化绘制
+    window.onload = function() {
+      drawIcon(document.getElementById('canvas16'), 16);
+      drawIcon(document.getElementById('canvas48'), 48);
+      drawIcon(document.getElementById('canvas128'), 128);
+    };
+  </script>
+</body>
+</html>
+

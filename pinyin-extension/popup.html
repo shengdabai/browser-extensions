@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>中文学习助手</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 350px;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      background: #f5f5f5;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin: 0 0 5px 0;
+      color: #333;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: #666;
+      margin: 0;
+    }
+
+    .settings-section {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .settings-section h2 {
+      font-size: 14px;
+      margin: 0 0 12px 0;
+      color: #333;
+      font-weight: 600;
+    }
+
+    .switch-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding: 8px 0;
+    }
+
+    .switch-container:last-child {
+      margin-bottom: 0;
+    }
+
+    .switch-label {
+      font-size: 13px;
+      color: #333;
+      flex: 1;
+      margin-right: 10px;
+    }
+
+    .switch-label .description {
+      font-size: 11px;
+      color: #999;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked+.slider {
+      background-color: #4CAF50;
+    }
+
+    input:checked+.slider:before {
+      transform: translateX(26px);
+    }
+
+    .example {
+      background: #f9f9f9;
+      border-left: 3px solid #4CAF50;
+      padding: 10px;
+      margin-top: 15px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .example-title {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 5px;
+    }
+
+    .example-text {
+      color: #666;
+      line-height: 1.6;
+    }
+
+    .status {
+      font-size: 12px;
+      color: #4CAF50;
+      margin-top: 10px;
+      text-align: center;
+      display: none;
+      padding: 8px;
+      background: #e8f5e9;
+      border-radius: 4px;
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: #999;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #eee;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <h1>中文学习助手</h1>
+    <p class="subtitle">Chinese Learning Assistant</p>
+  </div>
+
+  <div class="settings-section">
+    <h2>功能开关</h2>
+    <div class="switch-container">
+      <label class="switch-label" for="enableSwitch">
+        启用插件
+        <span class="description">Enable Extension</span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="enableSwitch" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h2>显示选项</h2>
+    <div class="switch-container">
+      <label class="switch-label" for="pinyinSwitch">
+        显示拼音
+        <span class="description">Show Pinyin</span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="pinyinSwitch" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-container">
+      <label class="switch-label" for="translationSwitch">
+        显示英文翻译
+        <span class="description">Show English Translation</span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="translationSwitch" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="example">
+    <div class="example-title">示例 Example:</div>
+    <div class="example-text">
+      输入: 你好<br>
+      显示: 你好 (nǐ hǎo) [Hello]
+    </div>
+  </div>
+
+  <div class="status" id="status">设置已保存</div>
+
+  <div class="footer">
+    专为外国人学习中文设计<br>
+    Designed for Chinese learners
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>

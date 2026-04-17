@@ -1,0 +1,11 @@
+/* Content Script 样式 */
+
+#book-splitter-btn {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* 确保按钮不被页面样式覆盖 */
+#book-splitter-btn * {
+  box-sizing: border-box;
+}
+
