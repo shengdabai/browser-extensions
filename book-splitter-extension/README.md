@@ -4,7 +4,7 @@
 
 ## 功能特点
 
-- 📚 支持多种书籍格式：PDF、EPUB、MOBI
+- 📚 支持主要书籍格式：PDF、EPUB（完整支持）；MOBI 支持有限，建议先用 Calibre 转为 EPUB/PDF
 - 🔍 智能章节识别：自动检测章节标题
 - 🎯 多种识别模式：支持数字编号、中文标题、罗马数字等
 - 📝 多种输出格式：纯文本、Markdown、HTML
@@ -114,7 +114,7 @@ book-splitter-extension/
 
 ### 依赖库
 
-扩展使用以下 CDN 库：
+扩展使用以下本地 vendored 库（已包含在 `libs/` 目录中，无需网络）：
 - **pdf.js**: PDF 文件解析
 - **JSZip**: EPUB 文件解压
 

@@ -66,9 +66,7 @@
 
             return '';
         } catch (error) {
-            console.warn('翻译失败，尝试备用方案:', error);
-
-            // 备用方案：使用简单的词汇表（常用词翻译）
+            // API failed — fall back to local vocabulary
             return getSimpleTranslation(text);
         }
     }

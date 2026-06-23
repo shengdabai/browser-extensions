@@ -199,7 +199,7 @@ function splitIntoChapters(text, options) {
       const regex = new RegExp(options.customPattern, 'm');
       patterns = [regex];
     } catch (e) {
-      console.warn('自定义正则表达式无效，使用默认模式');
+      // invalid regex — fall through to default patterns
     }
   }
 

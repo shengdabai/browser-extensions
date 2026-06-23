@@ -27,7 +27,7 @@
       showPinyin = result.showPinyin !== false;
       showTranslation = result.showTranslation !== false;
     } catch (e) {
-      console.warn('读取设置失败', e);
+      // use defaults if storage read fails
     }
   }
 
@@ -45,7 +45,7 @@
           parts.push(`(${pinyin})`);
         }
       } catch (e) {
-        console.warn('拼音生成失败', e);
+        // pinyin generation failed silently
       }
     }
 
@@ -57,7 +57,7 @@
           parts.push(`[${trans}]`);
         }
       } catch (e) {
-        console.warn('翻译失败', e);
+        // translation failed silently
       }
     }
 
@@ -173,6 +173,10 @@
       await loadSettings();
       if (!isEnabled) return;
 
+      // 跳过密码框和其他敏感输入类型
+      if (element.type === 'password' || element.type === 'email' ||
+          element.type === 'tel' || element.type === 'number') return;
+
       const currentValue = element.value || element.textContent || '';
 
       // 简单判断：长度增加且包含中文
@@ -228,7 +232,7 @@
   function init() {
     loadSettings();
 
-    // 静态绑定
+    // 静态绑定（排除密码框等敏感输入）
     const selector = 'input[type="text"], input[type="search"], textarea, [contenteditable="true"]';
     document.querySelectorAll(selector).forEach(attachListener);
 
@@ -247,11 +251,6 @@
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
-
-    // 定期检查（针对PDF Viewer的 shadow dom 或 动态层）
-    setInterval(() => {
-      document.querySelectorAll(selector).forEach(attachListener);
-    }, 2000);
   }
 
   if (document.readyState === 'loading') {

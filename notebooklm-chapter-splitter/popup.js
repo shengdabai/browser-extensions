@@ -35,7 +35,6 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
       document.getElementById('splitBtn').disabled = false;
     }
   } catch (error) {
-    console.error('解析文件失败:', error);
     showStatus('解析文件失败: ' + error.message, 'error');
   }
 });
@@ -85,7 +84,6 @@ document.getElementById('splitBtn').addEventListener('click', async () => {
     }, 500);
     
   } catch (error) {
-    console.error('拆分失败:', error);
     showStatus('拆分失败: ' + error.message, 'error');
   } finally {
     document.getElementById('splitBtn').disabled = false;
@@ -155,7 +153,7 @@ async function downloadAllChapters(chapterFiles) {
       // 添加小延迟避免浏览器限制
       await new Promise(resolve => setTimeout(resolve, 200));
     } catch (error) {
-      console.error(`下载 ${file.filename} 失败:`, error);
+      showStatus(`下载 ${file.filename} 失败: ${error.message}`, 'error');
     }
   }
   

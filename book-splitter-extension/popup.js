@@ -88,7 +88,6 @@ document.getElementById('splitBtn').addEventListener('click', async () => {
       showResult(resultChapters.length);
     }, 500);
   } catch (error) {
-    console.error('Error:', error);
     alert('处理失败: ' + error.message + '\n\n请确保：\n1. 文件格式正确\n2. 网络连接正常\n3. 文件未损坏');
     document.getElementById('progressSection').style.display = 'none';
     document.getElementById('optionsSection').style.display = 'block';
@@ -146,7 +145,6 @@ document.getElementById('downloadAllBtn').addEventListener('click', async () => 
       // 延迟以避免浏览器阻止多个下载
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (error) {
-      console.error(`下载章节 ${i + 1} 失败:`, error);
       failCount++;
     }
   }

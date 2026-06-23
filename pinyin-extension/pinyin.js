@@ -20,7 +20,7 @@
           return lib(text, { toneType: 'symbol' });
         }
       } catch (e) {
-        console.warn('拼音转换出错:', e);
+        // pinyin conversion failed silently
       }
     }
     return text; // 降级：返回原文

@@ -163,12 +163,9 @@
   // 监听来自 background 的消息
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'uploadChapters') {
-      console.log('收到章节上传请求:', message.chapters.length);
       // 这里可以实现自动上传到 NotebookLM 的功能
       // 需要根据 NotebookLM 的实际 API 或界面结构来实现
       sendResponse({ success: true, message: '收到上传请求' });
     }
   });
-
-  console.log('NotebookLM 章节拆分工具 Content Script 已加载');
 })();

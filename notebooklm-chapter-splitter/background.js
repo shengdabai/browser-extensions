@@ -2,11 +2,7 @@
 
 // 监听扩展安装
 chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') {
-    console.log('NotebookLM 章节拆分工具已安装');
-  } else if (details.reason === 'update') {
-    console.log('NotebookLM 章节拆分工具已更新');
-  }
+  // install/update lifecycle — no action needed
 });
 
 // 监听消息
@@ -46,8 +42,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // 监听下载完成事件
-chrome.downloads.onChanged.addListener((delta) => {
-  if (delta.state && delta.state.current === 'complete') {
-    console.log('下载完成:', delta.id);
-  }
+chrome.downloads.onChanged.addListener((_delta) => {
+  // download state change — no action needed
 });

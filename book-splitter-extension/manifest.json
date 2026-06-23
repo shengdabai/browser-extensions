@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "书籍章节拆分工具",
   "version": "1.1.0",
-  "description": "将 PDF、EPUB、MOBI 等书籍文件按章节拆分为独立文档，方便 NotebookLM 分析",
+  "description": "将 PDF、EPUB 书籍文件按章节拆分为独立文档，方便 NotebookLM 分析（MOBI 支持有限，建议先转 EPUB/PDF）",
   "permissions": [
     "activeTab",
     "storage",

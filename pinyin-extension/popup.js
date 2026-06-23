@@ -40,7 +40,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.storage.sync.set({ pinyinEnabled: e.target.checked });
       showStatus(e.target.checked ? '插件已启用' : '插件已禁用');
     } catch (err) {
-      console.error('保存设置失败', err);
       showStatus('保存失败，请重试');
     }
   });
@@ -51,7 +50,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.storage.sync.set({ showPinyin: e.target.checked });
       showStatus('设置已保存');
     } catch (err) {
-      console.error('保存设置失败', err);
       showStatus('保存失败，请重试');
     }
   });
@@ -62,7 +60,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.storage.sync.set({ showTranslation: e.target.checked });
       showStatus('设置已保存');
     } catch (err) {
-      console.error('保存设置失败', err);
       showStatus('保存失败，请重试');
     }
   });
