@@ -16,18 +16,22 @@
 
   let isEnabled = true;
   let showPinyin = true;
-  let showTranslation = true;
+  // Remote translation sends typed text to Google, so it is off unless the user
+  // turned it on for this exact site in the popup (translationSites holds origins).
+  let showTranslation = false;
   let processingMap = new WeakMap(); // 防止重复处理
 
   // 加载设置
   async function loadSettings() {
     try {
-      const result = await chrome.storage.sync.get(['pinyinEnabled', 'showPinyin', 'showTranslation']);
+      const result = await chrome.storage.sync.get(['pinyinEnabled', 'showPinyin', 'translationSites']);
       isEnabled = result.pinyinEnabled !== false;
       showPinyin = result.showPinyin !== false;
-      showTranslation = result.showTranslation !== false;
+      const sites = Array.isArray(result.translationSites) ? result.translationSites : [];
+      showTranslation = sites.includes(location.origin);
     } catch (e) {
-      // use defaults if storage read fails
+      // storage unavailable: keep remote translation off
+      showTranslation = false;
     }
   }
 

@@ -6,23 +6,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   const translationSwitch = document.getElementById('translationSwitch');
   const status = document.getElementById('status');
 
+  const translationSite = document.getElementById('translationSite');
+
+  // 当前标签页的网站；翻译只对用户逐个开启的网站生效（默认关闭）
+  let siteOrigin = null;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = tab && tab.url ? new URL(tab.url) : null;
+    if (url && (url.protocol === 'http:' || url.protocol === 'https:')) {
+      siteOrigin = url.origin;
+    }
+  } catch (e) {
+    siteOrigin = null;
+  }
+  translationSite.textContent = siteOrigin ? new URL(siteOrigin).host : '此页面不支持翻译';
+  translationSwitch.disabled = !siteOrigin;
+
+  async function getTranslationSites() {
+    const { translationSites } = await chrome.storage.sync.get('translationSites');
+    return Array.isArray(translationSites) ? translationSites : [];
+  }
+
   // 加载当前设置
   try {
-    const result = await chrome.storage.sync.get([
-      'pinyinEnabled',
-      'showPinyin',
-      'showTranslation'
-    ]);
+    const result = await chrome.storage.sync.get(['pinyinEnabled', 'showPinyin']);
 
-    // 默认值：全部启用
+    // 拼音在本地生成，默认启用；翻译需按网站开启
     enableSwitch.checked = result.pinyinEnabled !== false;
     pinyinSwitch.checked = result.showPinyin !== false;
-    translationSwitch.checked = result.showTranslation !== false;
+    translationSwitch.checked = siteOrigin ? (await getTranslationSites()).includes(siteOrigin) : false;
   } catch (e) {
     // 如果加载失败，使用默认值
     enableSwitch.checked = true;
     pinyinSwitch.checked = true;
-    translationSwitch.checked = true;
+    translationSwitch.checked = false;
   }
 
   // 显示保存状态
@@ -54,11 +71,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // 保存翻译显示设置
+  // 保存当前网站的翻译授权
   translationSwitch.addEventListener('change', async (e) => {
+    if (!siteOrigin) return;
     try {
-      await chrome.storage.sync.set({ showTranslation: e.target.checked });
-      showStatus('设置已保存');
+      const sites = (await getTranslationSites()).filter((o) => o !== siteOrigin);
+      if (e.target.checked) sites.push(siteOrigin);
+      await chrome.storage.sync.set({ translationSites: sites });
+      showStatus(e.target.checked ? '已在此网站开启翻译' : '已在此网站关闭翻译');
     } catch (err) {
       showStatus('保存失败，请重试');
     }

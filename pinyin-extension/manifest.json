@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "中文学习助手 - 拼音与翻译",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "自动为输入的中文添加拼音标注和英文翻译，帮助外国人学习中文",
   "permissions": [
     "activeTab",
