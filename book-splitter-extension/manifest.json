@@ -5,7 +5,6 @@
   "description": "将 PDF、EPUB 书籍文件按章节拆分为独立文档，方便 NotebookLM 分析（MOBI 支持有限，建议先转 EPUB/PDF）",
   "permissions": [
     "activeTab",
-    "storage",
     "downloads"
   ],
   "host_permissions": [
