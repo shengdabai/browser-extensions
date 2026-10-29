@@ -52,7 +52,9 @@ async function parsePDF(file) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
-    const pageText = textContent.items.map(item => item.str).join(' ');
+    const pageText = textContent.items
+      .filter(item => typeof item.str === 'string')
+      .map(item => item.str + (item.hasEOL ? '\n' : ' ')).join('');
     fullText += pageText + '\n';
   }
 
@@ -161,6 +163,7 @@ async function parseMOBI(file) {
 
 // 检测章节
 function detectChapters(text) {
+  if (!text.trim()) return [];
   const chapters = [];
 
   // 章节检测模式（按优先级排序）
@@ -185,7 +188,7 @@ function detectChapters(text) {
       if (match) {
         chapterStarts.push({
           index: i,
-          title: (match[1] || match[0]).trim(),
+          title: (match[2] || match[1] || match[0]).trim(),
           fullMatch: match[0]
         });
         break;
@@ -201,15 +204,25 @@ function detectChapters(text) {
     }];
   }
 
+  // 保留首个章节标题之前的序言或说明。
+  const preface = lines.slice(0, chapterStarts[0].index).join('\n').trim();
+  if (preface) {
+    chapters.push({ title: '前言', content: preface });
+  }
+
   // 根据章节标题拆分内容
   for (let i = 0; i < chapterStarts.length; i++) {
     const start = chapterStarts[i];
     const end = i < chapterStarts.length - 1 ? chapterStarts[i + 1].index : lines.length;
 
+    // 目录中的连续标题没有正文，不生成独立章节。
+    const body = lines.slice(start.index + 1, end).join('\n').trim();
+    if (!body) continue;
+
     const chapterLines = lines.slice(start.index, end);
     const content = chapterLines.join('\n').trim();
 
-    if (content.length > 50) { // 过滤太短的章节
+    if (content) {
       chapters.push({
         title: start.title,
         content: content
