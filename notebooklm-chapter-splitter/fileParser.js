@@ -40,7 +40,7 @@ async function loadJSZip() {
 }
 
 // 解析 PDF 文件
-async function parsePDF(file) {
+async function parsePDF(file, options = {}) {
   await loadPDFJS();
 
   const arrayBuffer = await file.arrayBuffer();
@@ -52,18 +52,52 @@ async function parsePDF(file) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .filter(item => typeof item.str === 'string')
-      .map(item => item.str + (item.hasEOL ? '\n' : ' ')).join('');
+    const pageText = pdfPageText(textContent.items);
     fullText += pageText + '\n';
   }
 
   // 检测章节
-  return detectChapters(fullText);
+  return detectChapters(fullText, options);
+}
+
+function pdfPageText(items) {
+  const textItems = items.filter(item => typeof item.str === 'string').map(item => ({
+    ...item, str: item.str.replace(/[⺀-⿟]/g, c => c.normalize('NFKC'))
+  }));
+  return textItems.map((item, i) => {
+    if (item.hasEOL) return item.str + '\n';
+    const next = textItems[i + 1];
+    // Keep extracted Han glyphs and full-width punctuation together.
+    const adjacentHan = next && /[\u3400-\u9fff\u3000-\u303f\uff00-\uffef]$/.test(item.str)
+      && /^[\u3400-\u9fff\u3000-\u303f\uff00-\uffef:]/.test(next.str);
+    return item.str + (adjacentHan ? '' : ' ');
+  }).join('');
+}
+
+function resolveEPUBPath(base, href, decode = true) {
+  if (!href) throw new Error('EPUB 章节路径为空');
+  let relative;
+  try {
+    relative = href.split(/[?#]/)[0];
+    if (decode) relative = decodeURIComponent(relative);
+  }
+  catch { throw new Error('EPUB 章节路径编码无效'); }
+  if (!relative || /^[\\/]|^[a-z][a-z\d+.-]*:/i.test(relative) || /[\\\0]/.test(relative)) {
+    throw new Error('EPUB 章节路径必须位于书籍内');
+  }
+  const parts = base.split('/').filter(Boolean);
+  for (const part of relative.split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      if (!parts.length) throw new Error('EPUB 章节路径超出书籍范围');
+      parts.pop();
+    } else parts.push(part);
+  }
+  return parts.join('/');
 }
 
 // 解析 EPUB 文件
-async function parseEPUB(file) {
+async function parseEPUB(file, options = {}) {
   await loadJSZip();
 
   const arrayBuffer = await file.arrayBuffer();
@@ -99,35 +133,48 @@ async function parseEPUB(file) {
     const idref = spineItem.getAttribute('idref');
     const manifestItem = Array.from(manifestItems).find(item => item.getAttribute('id') === idref);
 
-    if (manifestItem) {
+    if (!manifestItem) {
+      console.warn('跳过 EPUB 章节：章节引用无效');
+      continue;
+    }
+    try {
       const href = manifestItem.getAttribute('href');
-      const filePath = opfPath + href;
-
-      if (zip.files[filePath]) {
-        const content = await zip.files[filePath].async('text');
-        const htmlDoc = parser.parseFromString(content, 'text/html');
-        const text = htmlDoc.body.textContent || htmlDoc.body.innerText || '';
-
-        // 尝试提取章节标题
-        const titleElement = htmlDoc.querySelector('h1, h2, .chapter-title, [class*="chapter"]');
-        let title = titleElement ? titleElement.textContent.trim() : `章节 ${chapterIndex}`;
-
-        if (text.trim()) {
-          chapters.push({
-            title: title,
-            content: text.trim()
-          });
-          chapterIndex++;
-        }
+      const filePath = resolveEPUBPath(opfPath, href);
+      const chapterFile = zip.files[filePath] || zip.files[resolveEPUBPath(opfPath, href, false)];
+      if (!chapterFile) {
+        console.warn('跳过 EPUB 章节：章节文件缺失');
+        continue;
       }
+
+      const content = await chapterFile.async('text');
+      const htmlDoc = parser.parseFromString(content, 'text/html');
+      htmlDoc.querySelectorAll('script, style, noscript').forEach(node => node.remove());
+      htmlDoc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, div, section, article, li, blockquote, pre, br, tr')
+        .forEach(node => node.append('\n'));
+      const text = htmlDoc.body.textContent || htmlDoc.body.innerText || '';
+
+      // 尝试提取章节标题
+      const titleElement = htmlDoc.querySelector('h1, h2, .chapter-title, [class*="chapter"]');
+      let title = titleElement ? titleElement.textContent.trim() : `章节 ${chapterIndex}`;
+
+      if (text.trim()) {
+        chapters.push({
+          title: title,
+          content: text.trim()
+        });
+        chapterIndex++;
+      }
+    } catch {
+      console.warn('跳过 EPUB 章节：路径无效或内容无法读取');
     }
   }
 
+  if (options.autoDetect === false) return detectChapters(chapters.map(c => c.content).join('\n\n'), options);
   return chapters.length > 0 ? chapters : detectChapters(chapters.map(c => c.content).join('\n\n'));
 }
 
 // 解析 MOBI 文件
-async function parseMOBI(file) {
+async function parseMOBI(file, options = {}) {
   const arrayBuffer = await file.arrayBuffer();
   const uint8Array = new Uint8Array(arrayBuffer);
 
@@ -158,17 +205,18 @@ async function parseMOBI(file) {
     throw new Error('无法从 MOBI 文件中提取内容。建议先转换为 EPUB 或 PDF 格式。');
   }
 
-  return detectChapters(text);
+  return detectChapters(text, options);
 }
 
 // 检测章节
-function detectChapters(text) {
+function detectChapters(text, options = {}) {
   if (!text.trim()) return [];
+  if (options.autoDetect === false) return [{title: '完整内容', content: text.trim()}];
   const chapters = [];
 
   // 章节检测模式（按优先级排序）
   const patterns = [
-    /^第[零一二三四五六七八九十百千\d]+章[：:\s]*(.+)?$/m,
+    /^第\s*[零一二三四五六七八九十百千万\d]+\s*章[：:\s]*(.+)?$/m,
     /^第\d+章[：:\s]*(.+)?$/m,
     /^Chapter\s+\d+[：:\s]*(.+)?$/im,
     /^[IVX]+\.\s*(.+)?$/m,

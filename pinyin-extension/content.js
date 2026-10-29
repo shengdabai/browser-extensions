@@ -158,9 +158,12 @@
     let isComposing = false;
     let lastValue = element.value || element.textContent || '';
     let debounceTimer = null;
+    let inputVersion = 0;
 
     element.addEventListener('compositionstart', () => {
       isComposing = true;
+      inputVersion++;
+      clearTimeout(debounceTimer);
     });
 
     element.addEventListener('compositionend', (e) => {
@@ -174,8 +177,10 @@
     });
 
     async function handleInput(e) {
+      const version = ++inputVersion;
+      clearTimeout(debounceTimer);
       await loadSettings();
-      if (!isEnabled) return;
+      if (version !== inputVersion || !isEnabled) return;
 
       // 跳过密码框和其他敏感输入类型
       if (element.type === 'password' || element.type === 'email' ||
@@ -210,15 +215,23 @@
       if (debounceTimer) clearTimeout(debounceTimer);
 
       debounceTimer = setTimeout(async () => {
-        // 二次检查：确保内容没被删除
+        // Recheck consent at dispatch time; queued input is not authorization.
+        await loadSettings();
+        if (version !== inputVersion || !isEnabled || isComposing) return;
+        if (['password', 'email', 'tel', 'number'].includes(element.type)) return;
         const nowValue = element.value || element.textContent || '';
-        if (nowValue.length < currentValue.length) {
+        if (nowValue !== currentValue) {
           lastValue = nowValue;
           return;
         }
 
+        const translationAllowed = showTranslation;
         const supplement = await generateSupplement(addedText);
-        if (!supplement) return;
+        await loadSettings();
+        if (!supplement || version !== inputVersion || !isEnabled || isComposing) return;
+        if (translationAllowed && !showTranslation) return;
+        if ((element.value || element.textContent || '') !== currentValue) return;
+        if (['password', 'email', 'tel', 'number'].includes(element.type)) return;
 
         if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
           insertToInput(element, supplement);

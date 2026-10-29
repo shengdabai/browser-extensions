@@ -2,6 +2,7 @@
 
 let selectedFile = null;
 let chapters = [];
+let selectionVersion = 0;
 
 document.getElementById('selectFileBtn').addEventListener('click', () => {
   document.getElementById('fileInput').click();
@@ -12,6 +13,13 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
   if (!file) return;
 
   selectedFile = file;
+  selectionVersion++;
+  chapters = [];
+  document.getElementById('downloadAllBtn').disabled = true;
+  document.getElementById('downloadAllBtn').textContent = '下载所有章节';
+  document.getElementById('splitBtn').disabled = false;
+  document.getElementById('resultSection').style.display = 'none';
+  document.getElementById('progressSection').style.display = 'none';
   const fileInfo = document.getElementById('fileInfo');
   fileInfo.textContent = `已选择: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
   fileInfo.style.display = 'block';
@@ -33,6 +41,8 @@ document.getElementById('splitBtn').addEventListener('click', async () => {
     alert('请先选择文件');
     return;
   }
+  const file = selectedFile;
+  const version = selectionVersion;
 
   const options = {
     autoDetect: document.getElementById('autoDetectChapters').checked,
@@ -53,13 +63,15 @@ document.getElementById('splitBtn').addEventListener('click', async () => {
   document.getElementById('resultSection').style.display = 'none';
 
   updateProgress(0, '读取文件...');
+  document.getElementById('splitBtn').disabled = true;
 
   try {
     // 读取文件内容
-    const arrayBuffer = await selectedFile.arrayBuffer();
+    const arrayBuffer = await file.arrayBuffer();
+    if (version !== selectionVersion) return;
     const fileData = new Uint8Array(arrayBuffer);
-    const fileName = selectedFile.name;
-    const fileType = selectedFile.type || getFileType(fileName);
+    const fileName = file.name.toLowerCase();
+    const fileType = file.type || getFileType(fileName);
 
     updateProgress(20, '解析文件...');
 
@@ -79,18 +91,24 @@ document.getElementById('splitBtn').addEventListener('click', async () => {
       throw new Error('不支持的文件格式，仅支持 PDF、EPUB 和 MOBI');
     }
 
+    if (version !== selectionVersion) return;
+    if (!resultChapters.length) throw new Error('未提取到可拆分的内容，请检查文件或转换格式');
     updateProgress(90, '完成拆分...');
 
     chapters = resultChapters;
+    document.getElementById('downloadAllBtn').disabled = false;
     updateProgress(100, '完成！');
 
     setTimeout(() => {
-      showResult(resultChapters.length);
+      if (version === selectionVersion) showResult(resultChapters.length);
     }, 500);
   } catch (error) {
-    alert('处理失败: ' + error.message + '\n\n请确保：\n1. 文件格式正确\n2. 网络连接正常\n3. 文件未损坏');
+    if (version !== selectionVersion) return;
+    alert('处理失败: ' + error.message + '\n\n请确保：\n1. 文件格式正确\n2. 本地解析库完整\n3. 文件未损坏');
     document.getElementById('progressSection').style.display = 'none';
     document.getElementById('optionsSection').style.display = 'block';
+  } finally {
+    if (version === selectionVersion) document.getElementById('splitBtn').disabled = false;
   }
 });
 
@@ -101,6 +119,8 @@ function updateProgress(percent, text) {
 
 document.getElementById('downloadAllBtn').addEventListener('click', async () => {
   if (chapters.length === 0) return;
+  const version = selectionVersion;
+  const downloadChapters = chapters.slice();
 
   const format = document.getElementById('outputFormat').value;
   const baseName = selectedFile.name.replace(/\.[^/.]+$/, '');
@@ -113,11 +133,12 @@ document.getElementById('downloadAllBtn').addEventListener('click', async () => 
   let successCount = 0;
   let failCount = 0;
 
-  for (let i = 0; i < chapters.length; i++) {
+  for (let i = 0; i < downloadChapters.length; i++) {
+    if (version !== selectionVersion) break;
     try {
-      downloadBtn.textContent = `下载中... (${i + 1}/${chapters.length})`;
+      downloadBtn.textContent = `下载中... (${i + 1}/${downloadChapters.length})`;
 
-      const chapter = chapters[i];
+      const chapter = downloadChapters[i];
       const content = formatContent(chapter.content, format, chapter.title);
       const fileName = sanitizeFileName(`${baseName}_${chapter.title}.${format}`);
 
@@ -149,11 +170,14 @@ document.getElementById('downloadAllBtn').addEventListener('click', async () => 
     }
   }
 
+  if (version !== selectionVersion) {
+    return;
+  }
   downloadBtn.disabled = false;
   downloadBtn.textContent = originalText;
 
   if (failCount === 0) {
-    alert(`成功下载 ${successCount} 个章节文件！`);
+    alert(`已开始下载 ${successCount} 个章节文件，请检查浏览器下载记录。`);
   } else {
     alert(`下载完成：成功 ${successCount} 个，失败 ${failCount} 个`);
   }
@@ -177,6 +201,7 @@ function formatContent(content, format, title) {
     case 'md':
       return `# ${titleText}\n\n${content}`;
     case 'html':
+      const escapedTitle = titleText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       // 将内容转换为 HTML，保留换行
       const htmlContent = content
         .replace(/&/g, '&amp;')
@@ -188,7 +213,7 @@ function formatContent(content, format, title) {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>${titleText}</title>
+  <title>${escapedTitle}</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -205,7 +230,7 @@ function formatContent(content, format, title) {
   </style>
 </head>
 <body>
-  <h1>${titleText}</h1>
+  <h1>${escapedTitle}</h1>
   <div>${htmlContent}</div>
 </body>
 </html>`;

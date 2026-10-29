@@ -13,7 +13,7 @@
 
 3. **加载插件**
    - 点击"加载已解压的扩展程序"按钮
-   - 选择文件夹：`/Users/tonysheng/Desktop/编程/插件/notebooklm-chapter-splitter`
+   - 选择文件夹：`notebooklm-chapter-splitter/`
    - 点击"选择"
 
 4. **确认安装**
@@ -124,12 +124,12 @@
 **可能原因**：
 - 文件格式不支持
 - 文件已损坏
-- 网络问题（CDN库加载失败）
+- 本地解析库文件缺失（检查 `libs/` 目录）
 
 **解决方法**：
 - 检查文件格式是否正确
 - 尝试转换文件格式
-- 检查网络连接
+- 检查扩展的 `libs/` 目录并重新加载扩展
 
 ### Q3：未检测到章节？
 
@@ -226,7 +226,7 @@
 
 - [NotebookLM 官网](https://notebooklm.google.com/)
 - [完整文档](README.md)
-- [问题反馈](GitHub Issues)
+- 问题反馈：项目仓库的 Issues 页面
 
 ## ✅ 下一步
 

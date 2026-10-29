@@ -11,7 +11,14 @@ document.getElementById('selectFileBtn').addEventListener('click', () => {
 document.getElementById('fileInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  await loadSelectedFile(file);
+});
 
+document.getElementById('autoDetectChapters').addEventListener('change', async () => {
+  if (selectedFile) await loadSelectedFile(selectedFile);
+});
+
+async function loadSelectedFile(file) {
   const version = ++selectionVersion;
   selectedFile = file;
   chapters = [];
@@ -42,7 +49,7 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
     if (version !== selectionVersion) return;
     showStatus('解析文件失败: ' + error.message, 'error');
   }
-});
+}
 
 document.getElementById('splitBtn').addEventListener('click', async () => {
   if (!selectedFile || chapters.length === 0) {
@@ -74,7 +81,7 @@ document.getElementById('splitBtn').addEventListener('click', async () => {
       
       chapterFiles.push({
         url,
-        filename: sanitizeFilename(chapter.title) + '.txt',
+        filename: sanitizeFilename((document.getElementById('includeChapterNumbers').checked ? `${i + 1}. ` : '') + chapter.title) + '.txt',
         title: chapter.title
       });
     }
@@ -119,15 +126,16 @@ function displayChapters(chapters) {
 
 async function parseFileAndDetectChapters(file) {
   const fileExtension = file.name.split('.').pop().toLowerCase();
+  const options = {autoDetect: document.getElementById('autoDetectChapters').checked};
   
   switch (fileExtension) {
     case 'pdf':
-      return await parsePDF(file);
+      return await parsePDF(file, options);
     case 'epub':
-      return await parseEPUB(file);
+      return await parseEPUB(file, options);
     case 'mobi':
     case 'azw3':
-      return await parseMOBI(file);
+      return await parseMOBI(file, options);
     default:
       throw new Error('不支持的文件格式');
   }

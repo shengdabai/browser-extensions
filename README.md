@@ -57,13 +57,15 @@ that uses its content script.
 With Node.js 18 or later, run from the repository root:
 
 ```bash
-node --test tests/splitters.test.js
+node --test tests/*.test.js
 ```
 
 The tests use synthetic text, a mocked PDF reader, and a mocked popup DOM and
 download API. They cover prefaces, short chapters, PDF line breaks, Markdown
 titles, overlapping file selections, empty results, literal file names, and
-download request failures. They do not open a browser, read credentials, or
+download request failures, fragmented Chinese PDF headings, EPUB relative paths,
+option handling, escaped HTML export titles, and queued translation consent.
+Translation tests use a mocked transport. They do not open a browser, read credentials, or
 make network requests.
 
 Before release, also load the extensions in Chrome/Edge and check a small PDF

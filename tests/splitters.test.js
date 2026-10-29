@@ -102,10 +102,11 @@ test('Markdown chapter titles use heading text', () => {
   assert.deepEqual(Array.from(result, c => c.title), ['开始', '结束']);
 });
 
-function popup() {
+function popup(script = 'notebooklm-chapter-splitter/popup.js') {
   const elements = new Map();
+  const alerts = [];
   function element() {
-    return {style: {}, disabled: false, textContent: '', innerHTML: '', listeners: {},
+    return {style: {}, disabled: false, checked: true, textContent: '', innerHTML: '', listeners: {},
       addEventListener(event, callback) { this.listeners[event] = callback; },
       appendChild() {}, querySelector() { return element(); }};
   }
@@ -116,15 +117,15 @@ function popup() {
     },
     createElement: element
   };
-  const ctx = load('notebooklm-chapter-splitter/popup.js', {
-    document, window: {}, setTimeout: callback => callback(),
-    URL: {revokeObjectURL() {}}, chrome: {downloads: {download: async () => 1}}
+  const ctx = load(script, {
+    document, window: {}, Blob, alert: message => alerts.push(message), setTimeout: callback => callback(),
+    URL: {createObjectURL: () => 'blob:test', revokeObjectURL() {}}, chrome: {runtime: {}, downloads: {download: async () => 1}}
   });
   const select = file => document.getElementById('fileInput').listeners.change({target: {files: [file]}});
-  return {ctx, document, select};
+  return {ctx, document, select, alerts};
 }
 
-const file = name => ({name, size: 1024, type: ''});
+const file = name => ({name, size: 1024, type: '', arrayBuffer: async () => new ArrayBuffer(0)});
 const chapter = title => [{title, content: '正文'}];
 
 test('file name is displayed as text, not HTML', async () => {
@@ -199,4 +200,233 @@ test('successful download requests report accepted count', async () => {
   await ctx.downloadAllChapters([{url: 'blob:a', filename: 'good.txt'}]);
   assert.equal(document.getElementById('status').className, 'status success');
   assert.match(document.getElementById('status').textContent, /1/);
+});
+
+for (const [file, split] of parsers) {
+  test(`${file}: fragmented Chinese PDF headings and English word boundaries`, async () => {
+    const lines = ['前言', '第一章 开始', 'Hello world', '第二章：结束', '短正文'];
+    const items = lines.flatMap(line => /[\u4e00-\u9fff]/.test(line)
+      ? Array.from(line, (str, i) => ({str, hasEOL: i === line.length - 1}))
+      : [{str: 'Hello'}, {str: 'world', hasEOL: true}]);
+    const ctx = load(file, {pdfjsLib: {GlobalWorkerOptions: {}, getDocument: () => ({promise: Promise.resolve({
+      numPages: 1, getPage: async () => ({getTextContent: async () => ({items})})
+    })})}});
+    const result = file.includes('fileParser')
+      ? await ctx.parsePDF({arrayBuffer: async () => new ArrayBuffer(0)})
+      : await ctx.processPDF(new Uint8Array(), {autoDetect: true, pattern: 'auto'});
+    assert.deepEqual(Array.from(result, c => c.title), ['前言', '开始', '结束']);
+    assert.match(result[1].content, /Hello world/);
+    assert.match(result[2].content, /短正文/);
+    assert.equal(split(ctx, '第一章\n甲\n第二章\n乙').length, 2);
+  });
+
+  test(`${file}: PDF normalizes Kangxi radicals in fragmented chapter headings`, async () => {
+    const lines = ['前言', '第⼀章：开始', '正文', '第⼆章：继续', '尾声'];
+    const items = lines.flatMap(line => Array.from(line, (str, i) => ({str, hasEOL: i === line.length - 1})));
+    const ctx = load(file, {pdfjsLib: {GlobalWorkerOptions: {}, getDocument: () => ({promise: Promise.resolve({
+      numPages: 1, getPage: async () => ({getTextContent: async () => ({items})})
+    })})}});
+    const result = file.includes('fileParser')
+      ? await ctx.parsePDF({arrayBuffer: async () => new ArrayBuffer(0)})
+      : await ctx.processPDF(new Uint8Array(), {autoDetect: true, pattern: 'auto'});
+    assert.deepEqual(Array.from(result, c => c.title), ['前言', '开始', '继续']);
+    assert.match(result[1].content, /^第一章：开始\n正文$/);
+    assert.match(result[2].content, /^第二章：继续\n尾声$/);
+    assert.equal(ctx.pdfPageText([{str: '第⼀章', hasEOL: true}]), '第一章\n');
+  });
+
+  test(`${file}: PDF joins split Han and full-width punctuation without normalizing punctuation`, () => {
+    const ctx = load(file);
+    const line = '中⽂，继续。｛结束｝';
+    const items = Array.from(line, (str, i) => ({str, hasEOL: i === line.length - 1}));
+    assert.equal(ctx.pdfPageText(items), '中文，继续。｛结束｝\n');
+    assert.equal(ctx.pdfPageText([{str: 'Hello'}, {str: 'world', hasEOL: true}]), 'Hello world\n');
+  });
+
+  test(`${file}: EPUB resolves encoded relative paths and preserves block boundaries`, async () => {
+    const entry = text => ({async: async () => text});
+    const files = {'OEBPS/package.opf': entry('opf'), 'Text/第一章.xhtml': entry('html')};
+    const attrs = data => ({getAttribute: key => data[key]});
+    const nodes = [['h1', '第一章：开始'], ['p', '正文'], ['script', 'ignored();']].map(([tag, text]) => ({
+      tag, textContent: text, removed: false,
+      append(value) {this.textContent += value;}, remove() {this.removed = true;}
+    }));
+    const html = {
+      body: {get textContent() {return nodes.filter(n => !n.removed).map(n => n.textContent).join('');}},
+      querySelector: () => nodes[0],
+      querySelectorAll: selector => nodes.filter(n => selector.split(',').map(s => s.trim()).includes(n.tag))
+    };
+    class DOMParser {
+      parseFromString(text) {
+        if (text === 'html') return html;
+        return {querySelectorAll: query => query === 'manifest item'
+          ? [attrs({id: 'ch1', href: '../Text/%E7%AC%AC%E4%B8%80%E7%AB%A0.xhtml#start'})]
+          : [attrs({idref: 'ch1'})]};
+      }
+    }
+    const ctx = load(file, {DOMParser, JSZip: {loadAsync: async () => ({files})}});
+    const parse = () => file.includes('fileParser')
+      ? ctx.parseEPUB({arrayBuffer: async () => new ArrayBuffer(0)})
+      : ctx.processEPUB(new Uint8Array(), {autoDetect: true, pattern: 'auto'});
+    const content = (await parse())[0].content;
+    assert.match(content, /第一章：开始\n+正文/);
+    assert.equal(content.includes('ignored();'), false);
+    for (const href of ['https://example.invalid/book', '../../outside', '%ZZ', '/root.xhtml']) {
+      assert.throws(() => ctx.resolveEPUBPath('OEBPS/', href), /EPUB/);
+    }
+  });
+
+  for (const failure of ['missing reference', 'missing file', 'invalid path', 'unreadable file', 'invalid document']) {
+    test(`${file}: EPUB skips and reports ${failure} while keeping later chapters`, async () => {
+      const fixture = epubFixture(file, failure);
+      const result = await fixture.parse();
+      assert.deepEqual(Array.from(result, c => c.title), [file.includes('fileParser') ? '第一章：保留' : '保留']);
+      assert.match(result[0].content, /第一章：保留\n正文/);
+      assert.equal(fixture.warnings.length, 1);
+      assert.match(fixture.warnings[0], /跳过 EPUB 章节/);
+      assert.equal(fixture.warnings[0].includes('private-chapter'), false);
+    });
+  }
+
+  test(`${file}: EPUB tries the raw encoded href when the decoded filename is absent`, async () => {
+    const fixture = epubFixture(file);
+    fixture.files['Text/%E4%B8%80.xhtml'] = fixture.files['Text/一.xhtml'];
+    delete fixture.files['Text/一.xhtml'];
+    const result = await fixture.parse();
+    assert.deepEqual(Array.from(result, c => c.title), [file.includes('fileParser') ? '第一章：保留' : '保留']);
+    assert.equal(fixture.warnings.length, 0);
+  });
+
+  test(`${file}: EPUB prefers decoded href and returns no chapters when all entries are missing`, async () => {
+    const fixture = epubFixture(file);
+    fixture.files['Text/%E4%B8%80.xhtml'] = {async: async () => {throw new Error('raw path must not be read');}};
+    assert.equal((await fixture.parse()).length, 1);
+    delete fixture.files['Text/一.xhtml'];
+    delete fixture.files['Text/%E4%B8%80.xhtml'];
+    assert.equal((await fixture.parse()).length, 0);
+    assert.equal(fixture.warnings.length, 1);
+  });
+}
+
+function epubFixture(file, failure) {
+  const entry = text => ({async: async () => text});
+  const attrs = data => ({getAttribute: key => data[key]});
+  const files = {'OEBPS/package.opf': entry('opf'), 'Text/一.xhtml': entry('good')};
+  const manifest = [attrs({id: 'good', href: '../Text/%E4%B8%80.xhtml#start'})];
+  const spine = [attrs({idref: 'good'})];
+  if (failure) {
+    spine.unshift(attrs({idref: 'bad'}));
+    if (failure !== 'missing reference') {
+      manifest.push(attrs({id: 'bad', href: failure === 'invalid path' ? '../../private-chapter.xhtml' : 'private-chapter.xhtml'}));
+    }
+    if (failure === 'unreadable file') files['OEBPS/private-chapter.xhtml'] = {async: async () => {throw new Error('private-chapter');}};
+    if (failure === 'invalid document') files['OEBPS/private-chapter.xhtml'] = entry('invalid');
+  }
+  class DOMParser {
+    parseFromString(text) {
+      if (text === 'opf') return {querySelectorAll: query => query === 'manifest item' ? manifest : spine};
+      if (text === 'invalid') return {body: null, querySelectorAll: () => []};
+      return {
+        body: {textContent: '第一章：保留\n正文'},
+        querySelector: () => ({textContent: '第一章：保留'}), querySelectorAll: () => []
+      };
+    }
+  }
+  const warnings = [];
+  const ctx = load(file, {DOMParser, JSZip: {loadAsync: async () => ({files})},
+    console: {warn: message => warnings.push(message)}});
+  return {files, warnings, parse: () => file.includes('fileParser')
+    ? ctx.parseEPUB({arrayBuffer: async () => new ArrayBuffer(0)})
+    : ctx.processEPUB(new Uint8Array(), {autoDetect: true, pattern: 'auto'})};
+}
+
+test('NotebookLM auto detection can be disabled without dropping heading-only text', () => {
+  const ctx = load('notebooklm-chapter-splitter/fileParser.js');
+  const text = '第一章：目录\n第二章：目录\n第一章：正文\n短文';
+  const result = ctx.detectChapters(text, {autoDetect: false});
+  assert.equal(result.length, 1);
+  assert.equal(result[0].content, text);
+});
+
+test('NotebookLM popup passes detection option and numbers filenames only when checked', async () => {
+  const {ctx, document, select} = popup();
+  document.getElementById('autoDetectChapters').checked = false;
+  let options;
+  ctx.parsePDF = async (file, value) => {options = value; return chapter('开始');};
+  await select(file('book.pdf'));
+  assert.equal(options.autoDetect, false);
+  await document.getElementById('splitBtn').listeners.click();
+  assert.equal(ctx.window._chapterFiles[0].filename, '1._开始.txt');
+  document.getElementById('includeChapterNumbers').checked = false;
+  await document.getElementById('splitBtn').listeners.click();
+  assert.equal(ctx.window._chapterFiles[0].filename, '开始.txt');
+});
+
+test('changing automatic detection reparses the selected file and invalidates old downloads', async () => {
+  const {ctx, document, select} = popup();
+  ctx.parsePDF = async (file, options) => options.autoDetect ? chapter('拆分') : chapter('完整内容');
+  await select(file('book.pdf'));
+  ctx.window._chapterFiles = [{url: 'blob:old'}];
+  document.getElementById('autoDetectChapters').checked = false;
+  await document.getElementById('autoDetectChapters').listeners.change();
+  assert.equal(vm.runInContext('chapters[0].title', ctx), '完整内容');
+  assert.equal(ctx.window._chapterFiles, null);
+  assert.equal(document.getElementById('downloadAllBtn').disabled, true);
+});
+
+test('HTML exports escape untrusted chapter titles in both title and heading', () => {
+  const {ctx} = popup('book-splitter-extension/popup.js');
+  const title = '</title><script>alert(1)</script><h1>"&';
+  const html = ctx.formatContent('<b>正文</b>', 'html', title);
+  assert.equal(html.includes('<script>'), false);
+  assert.match(html, /&lt;\/title&gt;/);
+  assert.match(html, /&lt;b&gt;正文&lt;\/b&gt;/);
+});
+
+for (const phase of ['reading', 'parsing']) {
+  test(`book popup discards stale ${phase} results after file selection changes`, async () => {
+    const {ctx, document, select} = popup('book-splitter-extension/popup.js');
+    let finish;
+    const oldFile = file('old.PDF');
+    if (phase === 'reading') oldFile.arrayBuffer = () => new Promise(resolve => {finish = resolve;});
+    ctx.processPDF = phase === 'parsing' ? () => new Promise(resolve => {finish = resolve;}) : async () => chapter('旧书');
+    await select(oldFile);
+    const pending = document.getElementById('splitBtn').listeners.click();
+    for (let i = 0; i < 10 && !finish; i++) await Promise.resolve();
+    assert.equal(typeof finish, 'function');
+    await select(file('new.pdf'));
+    finish(phase === 'reading' ? new ArrayBuffer(0) : chapter('旧书'));
+    await pending;
+    assert.equal(vm.runInContext('chapters.length', ctx), 0);
+    assert.equal(document.getElementById('resultSection').style.display, 'none');
+    assert.equal(document.getElementById('downloadAllBtn').disabled, true);
+  });
+}
+
+test('book popup rejects empty parsed content instead of reporting success', async () => {
+  const {ctx, document, select, alerts} = popup('book-splitter-extension/popup.js');
+  ctx.processPDF = async () => [];
+  await select(file('empty.pdf'));
+  await document.getElementById('splitBtn').listeners.click();
+  assert.equal(document.getElementById('resultSection').style.display, 'none');
+  assert.match(alerts[0], /未提取到/);
+});
+
+test('book popup stops submitting old downloads after selecting another file', async () => {
+  const {ctx, document, select, alerts} = popup('book-splitter-extension/popup.js');
+  ctx.processPDF = async () => [...chapter('一'), ...chapter('二')];
+  await select(file('old.pdf'));
+  await document.getElementById('splitBtn').listeners.click();
+  let finish; const calls = [];
+  ctx.chrome.downloads.download = (options, callback) => {
+    calls.push(options);
+    if (calls.length === 1) finish = callback;
+    else callback(1);
+  };
+  const pending = document.getElementById('downloadAllBtn').listeners.click();
+  await select(file('new.pdf'));
+  finish(1); await pending;
+  assert.equal(calls.length, 1);
+  assert.equal(alerts.length, 0);
+  assert.equal(document.getElementById('downloadAllBtn').disabled, true);
 });
