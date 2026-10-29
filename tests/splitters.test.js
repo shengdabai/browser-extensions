@@ -243,6 +243,29 @@ for (const [file, split] of parsers) {
     assert.equal(ctx.pdfPageText([{str: 'Hello'}, {str: 'world', hasEOL: true}]), 'Hello world\n');
   });
 
+  test(`${file}: PDF supplement radicals become unified ideographs in chapter titles`, async () => {
+    const lines = ['第三章：⻓⻔⻅⻛⻢⻆⻜⻦⻥⻰⻩⻝⻋⻉⻚⻮⻨', '正文'];
+    const items = lines.flatMap(line => Array.from(line, (str, i) => ({str, hasEOL: i === line.length - 1})));
+    const ctx = load(file, {pdfjsLib: {GlobalWorkerOptions: {}, getDocument: () => ({promise: Promise.resolve({
+      numPages: 1, getPage: async () => ({getTextContent: async () => ({items})})
+    })})}});
+    const result = file.includes('fileParser')
+      ? await ctx.parsePDF({arrayBuffer: async () => new ArrayBuffer(0)})
+      : await ctx.processPDF(new Uint8Array(), {autoDetect: true, pattern: 'auto'});
+    assert.deepEqual(Array.from(result, c => c.title), ['长门见风马角飞鸟鱼龙黄食车贝页齿麦']);
+    assert.equal(result[0].content, '第三章：长门见风马角飞鸟鱼龙黄食车贝页齿麦\n正文');
+    // Unmapped radicals still join without guessing their semantic equivalent.
+    assert.equal(ctx.pdfPageText([{str: '中'}, {str: '\u2e80'}, {str: '文', hasEOL: true}]), '中\u2e80文\n');
+  });
+
+  test(`${file}: PDF joins curly quotes, dashes and ellipsis without spaces from empty items`, () => {
+    const ctx = load(file);
+    const line = '中文“引号”‘单引号’——省略…结束';
+    assert.equal(ctx.pdfPageText([...Array.from(line, str => ({str})), {str: ''}]), line);
+    assert.equal(ctx.pdfPageText([{str: '中文'}, {str: '', hasEOL: true}]), '中文\n');
+    assert.equal(ctx.pdfPageText([{str: 'Hello'}, {str: ''}, {str: 'world'}, {str: ''}]), 'Hello world');
+  });
+
   test(`${file}: EPUB resolves encoded relative paths and preserves block boundaries`, async () => {
     const entry = text => ({async: async () => text});
     const files = {'OEBPS/package.opf': entry('opf'), 'Text/第一章.xhtml': entry('html')};
@@ -271,7 +294,7 @@ for (const [file, split] of parsers) {
     const content = (await parse())[0].content;
     assert.match(content, /第一章：开始\n+正文/);
     assert.equal(content.includes('ignored();'), false);
-    for (const href of ['https://example.invalid/book', '../../outside', '%ZZ', '/root.xhtml']) {
+    for (const href of ['https://example.invalid/book', '../../outside', '/root.xhtml', '%2e%2e/%2e%2e/outside']) {
       assert.throws(() => ctx.resolveEPUBPath('OEBPS/', href), /EPUB/);
     }
   });
@@ -297,6 +320,18 @@ for (const [file, split] of parsers) {
     assert.equal(fixture.warnings.length, 0);
   });
 
+  for (const href of ['100%.xhtml', '%ZZ.xhtml']) {
+    test(`${file}: EPUB reads raw href after decoding fails (${href})`, async () => {
+      const fixture = epubFixture(file, undefined, `../Text/${href}#start`);
+      fixture.files[`Text/${href}`] = fixture.files['Text/一.xhtml'];
+      delete fixture.files['Text/一.xhtml'];
+      const result = await fixture.parse();
+      assert.equal(result.length, 1);
+      assert.match(result[0].content, /第一章：保留\n正文/);
+      assert.equal(fixture.warnings.length, 0);
+    });
+  }
+
   test(`${file}: EPUB prefers decoded href and returns no chapters when all entries are missing`, async () => {
     const fixture = epubFixture(file);
     fixture.files['Text/%E4%B8%80.xhtml'] = {async: async () => {throw new Error('raw path must not be read');}};
@@ -308,11 +343,11 @@ for (const [file, split] of parsers) {
   });
 }
 
-function epubFixture(file, failure) {
+function epubFixture(file, failure, href = '../Text/%E4%B8%80.xhtml#start') {
   const entry = text => ({async: async () => text});
   const attrs = data => ({getAttribute: key => data[key]});
   const files = {'OEBPS/package.opf': entry('opf'), 'Text/一.xhtml': entry('good')};
-  const manifest = [attrs({id: 'good', href: '../Text/%E4%B8%80.xhtml#start'})];
+  const manifest = [attrs({id: 'good', href})];
   const spine = [attrs({idref: 'good'})];
   if (failure) {
     spine.unshift(attrs({idref: 'bad'}));

@@ -47,28 +47,35 @@ async function processPDF(fileData, options) {
   return splitIntoChapters(fullText, options);
 }
 
+// Clear equivalents from Unicode EquivalentUnifiedIdeograph.txt:
+// https://www.unicode.org/Public/UCD/latest/ucd/EquivalentUnifiedIdeograph.txt
+const pdfSupplementRadicals = Object.freeze({
+  '⻓': '长', '⻔': '门', '⻅': '见', '⻛': '风', '⻢': '马', '⻆': '角',
+  '⻜': '飞', '⻦': '鸟', '⻥': '鱼', '⻰': '龙', '⻩': '黄', '⻝': '食',
+  '⻋': '车', '⻉': '贝', '⻚': '页', '⻮': '齿', '⻨': '麦'
+});
+
 function pdfPageText(items) {
-  const textItems = items.filter(item => typeof item.str === 'string').map(item => ({
-    ...item, str: item.str.replace(/[⺀-⿟]/g, c => c.normalize('NFKC'))
+  const textItems = items.filter(item => typeof item.str === 'string' && (item.str || item.hasEOL)).map(item => ({
+    ...item, str: item.str.replace(/[⺀-⿟]/g, c => pdfSupplementRadicals[c] || c.normalize('NFKC'))
   }));
   return textItems.map((item, i) => {
     if (item.hasEOL) return item.str + '\n';
     const next = textItems[i + 1];
-    // Keep extracted Han glyphs and full-width punctuation together.
-    const adjacentHan = next && /[\u3400-\u9fff\u3000-\u303f\uff00-\uffef]$/.test(item.str)
-      && /^[\u3400-\u9fff\u3000-\u303f\uff00-\uffef:]/.test(next.str);
-    return item.str + (adjacentHan ? '' : ' ');
+    // Keep Han, radicals and Chinese punctuation together without changing punctuation.
+    const adjacentHan = next && /[\u3400-\u9fff\u2e80-\u2fdf\u3000-\u303f\uff00-\uffef\u2014\u2018\u2019\u201c\u201d\u2026]$/.test(item.str)
+      && /^[\u3400-\u9fff\u2e80-\u2fdf\u3000-\u303f\uff00-\uffef\u2014\u2018\u2019\u201c\u201d\u2026:]/.test(next.str);
+    return item.str + (next && next.str && item.str && !adjacentHan ? ' ' : '');
   }).join('');
 }
 
 function resolveEPUBPath(base, href, decode = true) {
   if (!href) throw new Error('EPUB 章节路径为空');
-  let relative;
-  try {
-    relative = href.split(/[?#]/)[0];
-    if (decode) relative = decodeURIComponent(relative);
+  let relative = href.split(/[?#]/)[0];
+  if (decode) {
+    try { relative = decodeURIComponent(relative); }
+    catch { /* Malformed percent escapes may be literal ZIP filenames; use the raw path. */ }
   }
-  catch { throw new Error('EPUB 章节路径编码无效'); }
   if (!relative || /^[\\/]|^[a-z][a-z\d+.-]*:/i.test(relative) || /[\\\0]/.test(relative)) {
     throw new Error('EPUB 章节路径必须位于书籍内');
   }
