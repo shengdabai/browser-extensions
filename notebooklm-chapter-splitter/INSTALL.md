@@ -3,7 +3,7 @@
 ## 📍 当前位置
 
 ```
-/Users/tonysheng/Desktop/编程/插件/notebooklm-chapter-splitter
+notebooklm-chapter-splitter/
 ```
 
 ## ✅ 安装前检查
@@ -41,7 +41,7 @@
 1. 点击左上角的"加载已解压的扩展程序"按钮
 2. 在弹出的文件夹选择窗口中，导航到：
    ```
-   /Users/tonysheng/Desktop/编程/插件/notebooklm-chapter-splitter
+   notebooklm-chapter-splitter/
    ```
 3. 选择该文件夹，点击"选择"
 
@@ -159,7 +159,7 @@
 名称：NotebookLM 章节拆分工具
 版本：1.1.0
 ID：（安装后自动生成）
-路径：/Users/tonysheng/Desktop/编程/插件/notebooklm-chapter-splitter
+路径：notebooklm-chapter-splitter/
 权限：storage, downloads, activeTab
 ```
 

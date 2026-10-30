@@ -39,15 +39,38 @@ This repository supports productized learning workflows: diagnostic input, guide
 
 ## Quick Start
 
-Use the commands that match the current project state:
+These are unpacked extensions; no dependency installation or build is required.
+Open `chrome://extensions/` (or `edge://extensions/`), enable Developer mode,
+choose **Load unpacked**, and select one extension folder:
+
+| Folder | Purpose |
+|---|---|
+| `book-splitter-extension` | Split books and export text, Markdown, or HTML. |
+| `notebooklm-chapter-splitter` | Detect chapters and download text files. |
+| `pinyin-extension` | Add local pinyin; remote translation is off until enabled per site. |
+
+After editing an extension, reload it on the extensions page. Refresh any page
+that uses its content script.
+
+### Local regression checks
+
+With Node.js 18 or later, run from the repository root:
 
 ```bash
-python3 -m http.server 8000
+node --test tests/*.test.js
 ```
 
-| Command | Purpose |
-|---|---|
-| `python3 -m http.server 8000` | Preview static files locally. |
+The tests use synthetic text, a mocked PDF reader, and a mocked popup DOM and
+download API. They cover prefaces, short chapters, PDF line breaks, Markdown
+titles, overlapping file selections, empty results, literal file names, and
+download request failures, fragmented Chinese PDF headings, EPUB relative paths,
+option handling, escaped HTML export titles, and queued translation consent.
+Translation tests use a mocked transport. They do not open a browser, read credentials, or
+make network requests.
+
+Before release, also load the extensions in Chrome/Edge and check a small PDF
+and EPUB, switch files while parsing, and verify downloads and failure messages.
+The mocked tests do not establish browser compatibility or completed downloads.
 
 ## Operating Notes
 
