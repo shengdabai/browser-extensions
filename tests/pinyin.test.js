@@ -88,3 +88,14 @@ test('translation response is discarded after input or authorization changes', a
     assert.equal(f.input.value, change === 'input' ? '谢谢' : '你好');
   }
 });
+
+// Issue #3: a site revoked inside the debounce window must not get one last
+// request, while the local pinyin supplement keeps working.
+test('revoking the site inside the debounce window sends nothing but keeps pinyin', async () => {
+  const f = fixture();
+  await f.type();
+  f.state.settings.translationSites = [];
+  await f.flush();
+  assert.deepEqual(f.state.requests, []);
+  assert.equal(f.input.value, '你好 (ni hao)');
+});
